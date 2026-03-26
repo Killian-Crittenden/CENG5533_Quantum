@@ -18,49 +18,67 @@ def build_dag_test_suite():
     # ---------------------------------------------------------
     # Tasks must be executed exactly one after the other.
     suite['01_chain_small'] = nx.path_graph(5, create_using=nx.DiGraph)
+
+    diamond = nx.DiGraph()
+    diamond.add_edges_from([(0,1), (0,2), (0,3), (1,4), (2,4), (3,4)])
+    suite['08_diamond_simple'] = diamond
+
+    double_diamond = nx.DiGraph()
+    double_diamond.add_edges_from([(0,1), (0,2), (1,3), (2,3), (3,4), (3,5), (4,6), (5,6)])
+    suite['09_diamond_double'] = double_diamond
+
+    suite['19_complete_dag_small'] = generate_random_dag(8, 1.0)
+
+    suite['04_independent_small'] = nx.empty_graph(10, create_using=nx.DiGraph)
+
+    suite['10_sparse_10_nodes'] = generate_random_dag(10, 0.15)
+
+    suite['14_dense_10_nodes'] = generate_random_dag(10, 0.60)
+
+    suite['06_fork_out'] = nx.star_graph(10)
+    suite['06_fork_out'] = nx.DiGraph([(0, i) for i in range(1, 11)]) # 0 unlocks 1-10
+
+    suite['07_fork_in'] = nx.DiGraph([(i, 11) for i in range(1, 11)]) # 1-10 must finish before 11
+
     suite['02_chain_med'] = nx.path_graph(15, create_using=nx.DiGraph)
+
+    suite['20_complete_dag_med'] = generate_random_dag(15, 1.0)
+
+    suite['15_dense_15_nodes'] = generate_random_dag(15, 0.50)
+
+    suite['16_dense_25_nodes'] = generate_random_dag(25, 0.40)
+
+    suite['11_sparse_25_nodes'] = generate_random_dag(25, 0.10)
+
     suite['03_chain_large'] = nx.path_graph(30, create_using=nx.DiGraph)
+
+    suite['17_dense_40_nodes'] = generate_random_dag(40, 0.30)
+
 
     # Category 2: Pure Parallel (Best-case for parallelization)
     # ---------------------------------------------------------
     # Zero dependencies. Tests basic machine bin-packing.
-    suite['04_independent_small'] = nx.empty_graph(10, create_using=nx.DiGraph)
     #suite['05_independent_large'] = nx.empty_graph(50, create_using=nx.DiGraph)
 
     # Category 3: Star / Fork Graphs (Map-Reduce style)
     # ---------------------------------------------------------
     # One task unlocks many, or many tasks feed into one.
-    suite['06_fork_out'] = nx.star_graph(10)
-    suite['06_fork_out'] = nx.DiGraph([(0, i) for i in range(1, 11)]) # 0 unlocks 1-10
     
-    suite['07_fork_in'] = nx.DiGraph([(i, 11) for i in range(1, 11)]) # 1-10 must finish before 11
+    
 
     # Category 4: Bottleneck / Diamond Graphs
     # ---------------------------------------------------------
     # Starts small, expands out, then squeezes back into a single task.
-    diamond = nx.DiGraph()
-    diamond.add_edges_from([(0,1), (0,2), (0,3), (1,4), (2,4), (3,4)])
-    suite['08_diamond_simple'] = diamond
-    
-    double_diamond = nx.DiGraph()
-    double_diamond.add_edges_from([(0,1), (0,2), (1,3), (2,3), (3,4), (3,5), (4,6), (5,6)])
-    suite['09_diamond_double'] = double_diamond
 
     # Category 5: Sparse Random DAGs
     # ---------------------------------------------------------
     # Typical real-world projects. Lots of nodes, relatively few strict dependencies.
-    suite['10_sparse_10_nodes'] = generate_random_dag(10, 0.15)
-    suite['11_sparse_25_nodes'] = generate_random_dag(25, 0.10)
     # suite['12_sparse_50_nodes'] = generate_random_dag(50, 0.05)
     # suite['13_sparse_100_nodes'] = generate_random_dag(100, 0.03)
 
     # Category 6: Dense Random DAGs
     # ---------------------------------------------------------
     # Extremely constrained networks. Very few valid schedules exist.
-    suite['14_dense_10_nodes'] = generate_random_dag(10, 0.60)
-    suite['15_dense_15_nodes'] = generate_random_dag(15, 0.50)
-    suite['16_dense_25_nodes'] = generate_random_dag(25, 0.40)
-    suite['17_dense_40_nodes'] = generate_random_dag(40, 0.30)
 
     # Category 7: Layered / Bipartite-like DAGs
     # ---------------------------------------------------------
@@ -78,8 +96,6 @@ def build_dag_test_suite():
     # Category 8: The "Complete" DAG
     # ---------------------------------------------------------
     # Every node points to every node created after it. Only ONE valid schedule exists.
-    suite['19_complete_dag_small'] = generate_random_dag(8, 1.0)
-    suite['20_complete_dag_med'] = generate_random_dag(15, 1.0)
 
     return suite
 
