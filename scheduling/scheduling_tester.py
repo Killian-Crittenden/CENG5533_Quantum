@@ -17,6 +17,17 @@ def build_dag_test_suite():
     # Category 1: Pure Chains (Worst-case for parallelization)
     # ---------------------------------------------------------
     # Tasks must be executed exactly one after the other.
+    suite['User Graph 1'] = nx.DiGraph()
+    suite['User Graph 1'].add_edges_from([(0,1), (0,2), (0,3), (1,4), (2,5), (3,6), (6,8), (3, 7), (4, 5), (5, 8), (4, 9), (9, 10), (8, 10), (7, 10)])
+    
+    suite['User Graph 2'] = nx.DiGraph()
+    suite['User Graph 2'].add_edges_from([(0, 8), (1, 8), (2, 9), (3, 9), (4, 10), (5,10), (6,11), (7,11),
+                                        (8, 12), (9, 12), (10, 13), (11, 13), (12, 15), (13, 15), (14, 17),
+                                        (15, 16), (16, 17)])
+    
+    suite['User Graph 3'] = nx.DiGraph()
+    suite['User Graph 3'].add_edges_from([(0,1),(1,2),(2,3),(3,10),(1,4),(4,10),(0, 5),(5,6),(6,7),(7,10),(0,8),(8,9),(9,10)])
+
     suite['01_chain_small'] = nx.path_graph(5, create_using=nx.DiGraph)
 
     diamond = nx.DiGraph()

@@ -3,7 +3,76 @@ import neal
 import networkx as nx
 import time
 import math
+import shutil
 from scheduling_tester import build_dag_test_suite
+
+import networkx as nx
+import matplotlib.pyplot as plt
+from networkx.drawing.nx_pydot import graphviz_layout
+
+def visualize_machine_dag(G, machine_assignments, title="Task Dependency Graph"):
+    """
+    Hierarchical DAG visualization. 
+    Uses G.graph attributes to force top-to-bottom flow and spacing.
+    """
+    # 1. Canvas Adjustment: Tall for vertical flow, high DPI for clarity
+    plt.figure(figsize=(10, 9)) 
+
+    # 2. Attribute Injection: Set spacing and direction in the graph itself
+    # This avoids the "unexpected keyword argument 'args'" error
+    G.graph['graph'] = {
+        'rankdir': 'TB',   # Top-to-Bottom
+        'ranksep': '2.0',  # Vertical space between layers
+        'nodesep': '1.0'   # Horizontal space between nodes
+    }
+
+    try:
+        # Use dot engine; attributes are read from G.graph automatically
+        pos = graphviz_layout(G, prog='dot')
+    except Exception as e:
+        print(f"Graphviz Error: {e}. Falling back to spring layout.")
+        pos = nx.spring_layout(G, k=0.5)
+
+    # 3. Machine Color Palette
+    machine_colors = [
+        '#FFADAD', '#A0C4FF', '#CAFFBF', '#FFD6A5', '#BDB2FF', 
+        '#FDFFB6', '#9BF6FF', '#FFC6FF', '#D4A373', '#E0E0E0'
+    ]
+    
+    node_colors = [machine_colors[machine_assignments.get(node, 9) % 10] for node in G.nodes()]
+
+    # 4. Drawing: Scaled down for high-density 40+ node graphs
+    nx.draw_networkx_nodes(G, pos, 
+                           node_size=600, 
+                           node_color=node_colors, 
+                           edgecolors='#424242', 
+                           linewidths=1.0)
+    
+    nx.draw_networkx_edges(G, pos, 
+                           edge_color='#BDBDBD', 
+                           width=1.0, 
+                           arrows=True, 
+                           arrowsize=12)
+
+    nx.draw_networkx_labels(G, pos, 
+                            font_size=8, 
+                            font_weight='bold', 
+                            font_family='sans-serif')
+    
+    # 5. Resource Legend
+    unique_machines = sorted(set(machine_assignments.values()))
+    legend_handles = [plt.Line2D([0], [0], marker='o', color='w', 
+                                 markerfacecolor=machine_colors[m % 10], 
+                                 markersize=10, label=f'Machine {m}') 
+                      for m in unique_machines]
+    
+    plt.legend(handles=legend_handles, loc='upper right', title="Resource Allocation", fontsize=10)
+    plt.title(title, fontsize=16, fontweight='bold', pad=20)
+    plt.axis('off')
+    
+    # 6. Save as PNG for easy scrolling/zooming on Ubuntu
+    plt.savefig("optimized_schedule.png", dpi=300, bbox_inches='tight')
+    plt.show()
 
 def text_pretty_print(G):
     print("--- Graph Adjacency List ---")
@@ -34,7 +103,45 @@ def get_time_windows(G, N):
     lst = {node: (N - 1) - len(nx.descendants(G, node)) for node in G.nodes}
     return est, lst
 
-def solve_optimized_m_machine_scheduling(dag=None):
+def assign_machines(schedule_by_time, G, num_machines):
+    """
+    Takes a valid time schedule and greedily assigns tasks to machines,
+    prioritizing keeping child tasks on the same machine as their parents.
+    
+    schedule_by_time: dict format {time_slot: [task1, task2, ...]}
+    """
+    machine_assignments = {} # {task_id: machine_id}
+    
+    for t in sorted(schedule_by_time.keys()):
+        tasks_at_t = schedule_by_time[t]
+        busy_machines_this_step = set()
+        
+        for task in tasks_at_t:
+            # Using NetworkX's predecessors method instead of dict iteration
+            parents = list(G.predecessors(task))
+            placed = False
+            
+            # Try to stay on a parent's machine
+            for p in parents:
+                if p in machine_assignments:
+                    parent_m = machine_assignments[p]
+                    if parent_m not in busy_machines_this_step:
+                        machine_assignments[task] = parent_m
+                        busy_machines_this_step.add(parent_m)
+                        placed = True
+                        break
+            
+            # Fallback to any free machine
+            if not placed:
+                for m in range(num_machines):
+                    if m not in busy_machines_this_step:
+                        machine_assignments[task] = m
+                        busy_machines_this_step.add(m)
+                        break
+                        
+    return machine_assignments
+
+def solve_optimized_m_machine_scheduling(dag=None, graph_name='Test'):
     #Define the DAG
     G = nx.DiGraph()
     #G.add_edges_from([(0, 1), (0, 2), (1, 3), (2, 3)])
@@ -47,12 +154,12 @@ def solve_optimized_m_machine_scheduling(dag=None):
                        (7, 10), (4, 10), (5, 8), (8, 10), (9, 10)])
     else:
         G = dag
-    
-    text_pretty_print(G)
+
+    #text_pretty_print(G)
     
     tasks = list(G.nodes)
     N = len(tasks)
-    num_machines = 5 
+    num_machines = 4 
 
     effective_machines = min(num_machines, N)
 
@@ -173,9 +280,12 @@ def solve_optimized_m_machine_scheduling(dag=None):
     print(f'Unoptimized Serial Runtime: {dag.number_of_nodes()} Units')
     print(f'Optimized Runtime: {len(schedule.keys())} Units')
     calculate_metrics(dag, len(schedule.keys()), num_machines)
+    machine_assignment = assign_machines(schedule, dag, num_machines)
+    visualize_machine_dag(dag, machine_assignment, graph_name)
 
 if __name__ == "__main__":
+    #solve_optimized_m_machine_scheduling()
     for name, dag in build_dag_test_suite().items():
         start_time = time.perf_counter()
-        solve_optimized_m_machine_scheduling(dag)
+        solve_optimized_m_machine_scheduling(dag, name)
         print(f'{name} took {(time.perf_counter()-start_time):.2f} seconds to find a soltion')
